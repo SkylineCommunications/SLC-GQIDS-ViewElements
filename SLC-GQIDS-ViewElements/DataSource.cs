@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using Skyline.DataMiner.Analytics.GenericInterface;
+using Skyline.DataMiner.Core.DataMinerSystem.Common;
 using Skyline.DataMiner.Net;
-using Skyline.DataMiner.Net.Messages;
 
 [GQIMetaData(Name = "Get elements in view")]
 public sealed class ViewElementsDataSource : IGQIDataSource, IGQIOnInit, IGQIInputArguments
@@ -37,19 +37,23 @@ public sealed class ViewElementsDataSource : IGQIDataSource, IGQIOnInit, IGQIInp
 		return new GQIPage(rows);
 	}
 
-	private IEnumerable<LiteElementInfoEvent> GetElements()
+	private IEnumerable<IDmsElement> GetElements()
 	{
-		var requestMsg = new GetLiteElementInfo { ViewID = _viewID };
-		var responseMsg = _dms.SendMessages(requestMsg);
-		return responseMsg.OfType<LiteElementInfoEvent>();
+		var connection = _dms.GetConnection();
+		var dms = connection.GetDms();
+
+		var view = dms.GetViewReference(_viewID);
+		return dms
+			.GetElements()
+			.Where(element => element.Views.Contains(view));
 	}
 
-	private GQIRow CreateElementRow(LiteElementInfoEvent element)
+	private GQIRow CreateElementRow(IDmsElement element)
 	{
 		// Create a new row with:
 
 		// 1. A unique key
-		var elementID = new ElementID(element.DataMinerID, element.ElementID);
+		var elementID = new ElementID(element.AgentId, element.Id);
 		var key = elementID.GetKey();
 
 		// 2. Cells containing element data
